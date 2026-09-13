@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Download, Trash2, Settings, Eraser, Check, Palette, Orbit, Split, RotateCw } from 'lucide-react';
+import { Download, Trash2, Settings, Eraser, Check, Palette, Orbit, Split, RotateCw, X } from 'lucide-react';
 import './index.css';
 
 const PRESET_COLORS = ['#f8fafc', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
@@ -11,6 +11,7 @@ function App() {
   const lastPos = useRef({ x: 0, y: 0 });
 
   // UI State
+  const [isToolbarOpen, setIsToolbarOpen] = useState(window.innerWidth > 768);
   const [brushColor, setBrushColor] = useState('#3b82f6');
   const [brushSize, setBrushSize] = useState(4);
   const [brushOpacity, setBrushOpacity] = useState(1);
@@ -189,8 +190,17 @@ function App() {
         />
       </div>
 
+      {/* Floating Settings Button */}
+      <button 
+        className="settings-btn"
+        onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+        aria-label="Toggle Settings"
+      >
+        {isToolbarOpen ? <X size={28} /> : <Settings size={28} />}
+      </button>
+
       {/* Toolbar Area */}
-      <div className="toolbar">
+      <div className={`toolbar ${isToolbarOpen ? 'open' : ''}`}>
         <div className="toolbar-section">
           <h2 className="toolbar-title">Tools</h2>
           <div className="action-grid">

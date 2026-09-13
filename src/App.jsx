@@ -44,19 +44,21 @@ function App() {
 
   const saveHistoryState = () => {
     const canvas = canvasRef.current;
-    const ctx = contextRef.current;
-    if (!canvas || !ctx) return;
+    if (!canvas) return;
     
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const offscreen = document.createElement('canvas');
+    offscreen.width = canvas.width;
+    offscreen.height = canvas.height;
+    offscreen.getContext('2d').drawImage(canvas, 0, 0);
     
     // Truncate forward history if we undo'd and then draw
     const nextStep = historyStep.current + 1;
     historyRef.current.splice(nextStep);
     
-    historyRef.current.push(imageData);
+    historyRef.current.push(offscreen);
     
-    // Keep max 30 states to prevent memory issues
-    if (historyRef.current.length > 30) {
+    // Keep max 20 states to prevent memory issues with canvases
+    if (historyRef.current.length > 20) {
       historyRef.current.shift();
     }
     historyStep.current = historyRef.current.length - 1;
@@ -65,11 +67,24 @@ function App() {
     setCanRedo(false);
   };
 
+  const restoreCanvas = (step) => {
+    const canvas = canvasRef.current;
+    const ctx = contextRef.current;
+    if (!canvas || !ctx) return;
+    
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const offscreen = historyRef.current[step];
+    if (offscreen) {
+      ctx.drawImage(offscreen, 0, 0);
+    }
+  };
+
   const undo = () => {
     if (historyStep.current > 0) {
       historyStep.current -= 1;
-      const ctx = contextRef.current;
-      ctx.putImageData(historyRef.current[historyStep.current], 0, 0);
+      restoreCanvas(historyStep.current);
       setCanUndo(historyStep.current > 0);
       setCanRedo(true);
     }
@@ -78,8 +93,7 @@ function App() {
   const redo = () => {
     if (historyStep.current < historyRef.current.length - 1) {
       historyStep.current += 1;
-      const ctx = contextRef.current;
-      ctx.putImageData(historyRef.current[historyStep.current], 0, 0);
+      restoreCanvas(historyStep.current);
       setCanUndo(true);
       setCanRedo(historyStep.current < historyRef.current.length - 1);
     }
@@ -102,9 +116,8 @@ function App() {
       const ctx = canvas.getContext('2d');
       
       // Only save existing image if the user has actually drawn something (historyStep > 0)
-      // We use an offscreen canvas and drawImage instead of getImageData to preserve opacity
       let existingCanvas = null;
-      if (historyStep.current > 0 && canvas.width > 0 && canvas.height > 0) {
+      if (historyStep.current >= 0 && canvas.width > 0 && canvas.height > 0) {
         existingCanvas = document.createElement('canvas');
         existingCanvas.width = canvas.width;
         existingCanvas.height = canvas.height;
@@ -331,6 +344,9 @@ function App() {
         
         {/* History Actions */}
         <div className="toolbar-section">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h2 className="toolbar-title">v1.2</h2>
+          </div>
           <div className="action-grid" style={{ marginBottom: '8px' }}>
             <button 
               className="btn" 

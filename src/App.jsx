@@ -96,13 +96,19 @@ function App() {
       const newWidth = container.clientWidth;
       const newHeight = container.clientHeight;
       
+      if (newWidth === 0 || newHeight === 0) return;
       if (canvas.width === newWidth && canvas.height === newHeight) return;
 
-      // Only save existing image if canvas was already initialized
       const ctx = canvas.getContext('2d');
-      let existingImgData = null;
-      if (canvas.width > 0 && canvas.height > 0) {
-        existingImgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Only save existing image if the user has actually drawn something (historyStep > 0)
+      // We use an offscreen canvas and drawImage instead of getImageData to preserve opacity
+      let existingCanvas = null;
+      if (historyStep.current > 0 && canvas.width > 0 && canvas.height > 0) {
+        existingCanvas = document.createElement('canvas');
+        existingCanvas.width = canvas.width;
+        existingCanvas.height = canvas.height;
+        existingCanvas.getContext('2d').drawImage(canvas, 0, 0);
       }
       
       canvas.width = newWidth;
@@ -116,10 +122,10 @@ function App() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
       // Restore drawing if resizing
-      if (existingImgData) {
-        ctx.putImageData(existingImgData, 0, 0);
+      if (existingCanvas) {
+        ctx.drawImage(existingCanvas, 0, 0);
       } else {
-        // Initial setup save
+        // Clear history if resizing from scratch to avoid restoring transparent blocks
         historyRef.current = [];
         historyStep.current = -1;
       }
@@ -262,12 +268,36 @@ function App() {
     saveHistoryState();
   };
 
-  const exportImage = () => {
+  const exportImage = async () => {
     const canvas = canvasRef.current;
+    const dataUrl = canvas.toDataURL('image/png');
+    const filename = `mandala-${Date.now()}.png`;
+
+    // Try Web Share API first (perfect for mobile & in-app browsers like Instagram)
+    if (navigator.share) {
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], filename, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'My Mandala',
+            files: [file]
+          });
+          return; // Stop here if share succeeded
+        }
+      } catch (err) {
+        console.log("Share failed or was cancelled:", err);
+        // Fall through to traditional download
+      }
+    }
+
+    // Fallback to standard download (works well on desktop)
     const link = document.createElement('a');
-    link.download = `mandala-${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.download = filename;
+    link.href = dataUrl;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
   const toggleEffect = (effectName) => {

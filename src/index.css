@@ -50,7 +50,7 @@ body {
 
 canvas {
   touch-action: none; /* Crucial for preventing scrolling on touch devices while drawing */
-  background: white; 
+  background-color: var(--bg-primary); 
   width: 100%;
   height: 100%;
   display: block;

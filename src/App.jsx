@@ -132,7 +132,8 @@ function App() {
       }
     };
 
-    updateCanvasSize();
+    // Delay initial calculation slightly to ensure DOM layout is complete
+    setTimeout(updateCanvasSize, 50);
     
     const handleResize = () => {
       clearTimeout(resizeTimer);
